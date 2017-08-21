@@ -22,19 +22,20 @@ passport.use(
       clientID: keys.googleClientID,
       clientSecret: keys.googleClientSecret,
       callbackURL: '/auth/google/callback',
+      //proxy makes it so that google redirectrs back to https instead of http
+      // Causes:
+      // 1) callbackURL uses relative path
+      // 2) Heroku uses a proxy to route to the correct Server our app is hosted on
       proxy: true
     },
     // accessToken, refreshToken, profile, done returned by Google
-    (accessToken, refreshToken, profile, done) => {
-      User.findOne({ googleID: profile.id }).then(existingUser => {
-        if (existingUser) {
-          done(null, existingUser);
-        } else {
-          new User({ googleID: profile.id }).save().then(user => {
-            done(null, user);
-          });
-        }
-      });
+    async (accessToken, refreshToken, profile, done) => {
+      const existingUser = await User.findOne({ googleID: profile.id });
+      if (existingUser) {
+        return await done(null, existingUser);
+      }
+      const user = await new User({ googleID: profile.id }).save();
+      await done(null, user);
     }
   )
 );
